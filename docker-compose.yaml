@@ -28,7 +28,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DB_DSN: root:example@tcp(db:3306)/auth_service
+      DB_DSN: root:example@tcp(db:3306)/auth_service?parseTime=true
     depends_on:
       db:
         condition: service_healthy
