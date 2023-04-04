@@ -2,10 +2,9 @@ package domain
 
 import "context"
 
-type RecipeStorage interface {
-	Create(ctx context.Context, recipe *Recipe) error
-	GetList(ctx context.Context) ([]Recipe, error)
-	GetByID(ctx context.Context, id uint) (Recipe, error)
-	UpdateByID(ctx context.Context, id uint, values map[string]interface{}) (Recipe, error)
-	DeleteByID(ctx context.Context, id uint) error
+type UserStorage interface {
+	Create(ctx context.Context, user *User) error
+	GetByUserID(ctx context.Context, userID string) (User, error)
+	UpdateByUserID(ctx context.Context, userID string, values map[string]interface{}) (User, error)
+	DeleteByUserID(ctx context.Context, userID string) error
 }

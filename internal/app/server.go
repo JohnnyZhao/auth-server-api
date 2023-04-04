@@ -13,11 +13,13 @@ func NewServer(api *Api) *Server {
 }
 
 func (s *Server) Setup() {
-	s.router.POST("/recipes", s.api.CreateRecipe)
-	s.router.GET("/recipes", s.api.ListRecipes)
-	s.router.GET("/recipes/:id", s.api.GetByID)
-	s.router.PATCH("/recipes/:id", s.api.PatchByID)
-	s.router.DELETE("/recipes/:id", s.api.DeleteByID)
+	s.router.POST("/signup", s.api.CreateUser)
+	s.router.Use(s.api.AuthMiddleware())
+	{
+		s.router.GET("/users/:user_id", s.api.GetByUserID)
+		s.router.PATCH("/users/:user_id", s.api.PatchByID)
+		s.router.POST("/close", s.api.DeleteByID)
+	}
 }
 
 func (s *Server) Run(addr string) {

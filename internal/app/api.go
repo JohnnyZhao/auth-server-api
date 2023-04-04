@@ -1,71 +1,100 @@
 package app
 
 import (
+	"encoding/base64"
 	"errors"
-	"net/http"
-	"strconv"
-	"strings"
-
 	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
 	"github.com/johnnyzhao/retail-ai-api/internal/domain"
 	"gorm.io/gorm"
+	"log"
+	"net/http"
+	"strings"
 )
 
+const userKey = "user"
+
 type Api struct {
-	recipeRepo domain.RecipeStorage
+	userRepo domain.UserStorage
 }
 
-func NewApi(repo domain.RecipeStorage) *Api {
-	return &Api{recipeRepo: repo}
+func NewApi(repo domain.UserStorage) *Api {
+	return &Api{userRepo: repo}
 }
 
-func (a *Api) CreateRecipe(c *gin.Context) {
-	var payload RecipePayload
-	//TODO, validate length of payload fields
-	if err := c.BindJSON(&payload); err != nil {
-		a.handleBadRequest(c, "invalid payload")
+func (a *Api) CreateUser(c *gin.Context) {
+	var payload CreateUserPayload
+	_ = c.BindJSON(&payload)
+	err := payload.ValidateRequired()
+	if err != nil {
+		a.handleBadRequest(c, "Account creation failed", err.Error())
 		return
 	}
-	required, ok := payload.ValidateRequired()
-	if !ok {
-		a.handleBadRequest(c, "Recipe creation failed!", required...)
-		return
+	//hashedPassword := hashPassword(payload.Password)
+	//if err != nil {
+	//	a.handleInternalError(c)
+	//	return
+	//}
+	user := domain.User{
+		UserID:         payload.UserID,
+		HashedPassword: payload.Password,
 	}
-	recipe := domain.Recipe{
-		Title:       *payload.Title,
-		MakingTime:  *payload.MakingTime,
-		Serves:      *payload.Serves,
-		Ingredients: *payload.Ingredients,
-		Cost:        *payload.Cost,
-	}
-	if err := a.recipeRepo.Create(c, &recipe); err != nil {
+	if err := a.userRepo.Create(c, &user); err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+			a.handleBadRequest(c, "Account creation failed", "already same user_id is used")
+			return
+		}
 		a.handleInternalError(c)
 		return
 	}
-
-	c.JSON(http.StatusOK, CreateItemResponse{
-		Message: "Recipe successfully created!",
-		Recipe:  TimestampedItem{Recipe: recipe, CreatedAt: recipe.CreatedAt, UpdatedAt: recipe.UpdatedAt},
+	c.JSON(http.StatusOK, CreateUserResponse{
+		Message: "Account successfully created!",
+		User:    user,
 	})
 }
 
-func (a *Api) ListRecipes(c *gin.Context) {
-	recipes, err := a.recipeRepo.GetList(c)
-	if err != nil {
-		a.handleInternalError(c)
-		return
+func (a *Api) AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := strings.Replace(c.GetHeader("Authorization"), "Basic ", "", -1)
+		log.Println("...", header)
+		valueBytes, err := base64.StdEncoding.DecodeString(header)
+		if err != nil {
+			a.handleUnauthorized(c)
+			c.Abort()
+			return
+		}
+		splits := strings.Split(string(valueBytes), ":")
+		if len(splits) != 2 {
+			a.handleUnauthorized(c)
+			c.Abort()
+			return
+		}
+		userID, password := strings.TrimSpace(splits[0]), strings.TrimSpace(splits[1])
+		user, err := a.userRepo.GetByUserID(c, userID)
+		if err != nil {
+			a.handleInternalError(c)
+			c.Abort()
+			return
+		}
+		//hashedPassword := hashPassword(password)
+		//log.Println(userID, password, hashedPassword, user.HashedPassword)
+		log.Println(password)
+		log.Println(user.HashedPassword)
+		if password != user.HashedPassword {
+			a.handleForbidden(c)
+			c.Abort()
+			return
+		}
+		c.Set(userKey, user.UserID)
+		c.Next()
 	}
-	c.JSON(http.StatusOK, ListResponse{Recipes: recipes})
 }
 
-func (a *Api) GetByID(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
-		a.handleBadRequest(c, "invalid ID")
-		return
-	}
+func (a *Api) GetByUserID(c *gin.Context) {
+	userID := c.Param("user_id")
 
-	recipe, err := a.recipeRepo.GetByID(c, uint(id))
+	user, err := a.userRepo.GetByUserID(c, userID)
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		a.handleNotFound(c)
@@ -75,27 +104,22 @@ func (a *Api) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ItemResponse{
-		Message: "Recipe details by id",
-		Recipe:  recipe,
+	c.JSON(http.StatusOK, GetUserResponse{
+		Message: "User details by user_id",
+		User:    user,
 	})
 }
 
 func (a *Api) PatchByID(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
-		a.handleBadRequest(c, "invalid ID")
+	var payload PatchUserPayload
+	_ = c.BindJSON(&payload)
+	if err := payload.ValidateRequired(); err != nil {
+		a.handleBadRequest(c, "User updation failed", err.Error())
 		return
 	}
 
-	//TODO, validate length of payload fields
-	var payload RecipePayload
-	if err := c.BindJSON(&payload); err != nil {
-		a.handleBadRequest(c, "invalid payload")
-		return
-	}
-
-	recipe, err := a.recipeRepo.GetByID(c, uint(id))
+	userID := c.Param("user_id")
+	user, err := a.userRepo.GetByUserID(c, userID)
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		a.handleNotFound(c)
@@ -105,33 +129,40 @@ func (a *Api) PatchByID(c *gin.Context) {
 		return
 	}
 
-	recipe, err = a.recipeRepo.UpdateByID(c, uint(id), payload.ToUpdateValues())
+	contextUserID, _ := c.Get(userKey)
+	if user.UserID != contextUserID.(string) {
+		a.handleForbidden(c)
+		return
+	}
+
+	values := make(map[string]interface{})
+	if payload.Comment != nil {
+		values["comment"] = *payload.Comment
+	}
+	if payload.Nickname != nil {
+		values["nickname"] = *payload.Nickname
+	}
+	_, err = a.userRepo.UpdateByUserID(c, userID, values)
 	if err != nil {
 		a.handleInternalError(c)
 		return
 	}
 
-	recipe, err = a.recipeRepo.GetByID(c, uint(id))
-
+	user, err = a.userRepo.GetByUserID(c, userID)
 	if err != nil {
 		a.handleInternalError(c)
 		return
 	}
 
 	c.JSON(http.StatusOK, ItemResponse{
-		Message: "Recipe successfully updated!",
-		Recipe:  recipe,
+		Message: "User successfully updated!",
+		Recipe:  user,
 	})
 }
 
 func (a *Api) DeleteByID(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-	if err != nil || id == 0 {
-		a.handleBadRequest(c, "invalid ID")
-		return
-	}
-
-	_, err = a.recipeRepo.GetByID(c, uint(id))
+	userID, _ := c.Get(userKey)
+	_, err := a.userRepo.GetByUserID(c, userID.(string))
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		a.handleNotFound(c)
@@ -141,12 +172,12 @@ func (a *Api) DeleteByID(c *gin.Context) {
 		return
 	}
 
-	if err = a.recipeRepo.DeleteByID(c, uint(id)); err != nil {
+	if err = a.userRepo.DeleteByUserID(c, userID.(string)); err != nil {
 		a.handleInternalError(c)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Recipe successfully removed!"})
+	c.JSON(http.StatusOK, gin.H{"message": "Account and user successfully removed!"})
 }
 
 func (a *Api) handleInternalError(c *gin.Context) {
@@ -155,22 +186,30 @@ func (a *Api) handleInternalError(c *gin.Context) {
 	})
 }
 
-func (a *Api) handleBadRequest(c *gin.Context, message string, required ...string) {
-	if len(required) == 0 {
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Message: message,
-		})
-		return
-	}
-	requiredStr := strings.Join(required, ", ")
+func (a *Api) handleBadRequest(c *gin.Context, message, cause string) {
 	c.JSON(http.StatusBadRequest, ErrorResponse{
-		Message:  message,
-		Required: &requiredStr,
+		Message: message,
+		Cause:   cause,
 	})
+	return
+}
+
+func (a *Api) handleUnauthorized(c *gin.Context) {
+	c.JSON(http.StatusUnauthorized, ErrorResponse{
+		Message: "Authorization failed",
+	})
+	return
+}
+
+func (a *Api) handleForbidden(c *gin.Context) {
+	c.JSON(http.StatusForbidden, ErrorResponse{
+		Message: "No Permission for Update",
+	})
+	return
 }
 
 func (a *Api) handleNotFound(c *gin.Context) {
 	c.JSON(http.StatusNotFound, ErrorResponse{
-		Message: "No recipe found",
+		Message: "No User found",
 	})
 }

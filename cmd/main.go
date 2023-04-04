@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	r := repo.NewRecipeRepo(db)
+	r := repo.NewUserRepo(db)
 	if err := r.Migrate(); err != nil {
 		log.Fatal("db migration error", err)
 	}

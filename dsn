@@ -1,0 +1,1 @@
+DB_DSN=root:recipe-db-password@tcp(34.68.16.239:3306)/recipe?charset=utf8mb4&parseTime=True
