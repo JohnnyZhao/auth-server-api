@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"github.com/johnnyzhao/retail-ai-api/internal/domain"
+	"github.com/johnnyzhao/auth-server-api/internal/domain"
 	"strings"
 )
 
@@ -12,8 +12,9 @@ type GetUserResponse struct {
 }
 
 type ItemResponse struct {
-	Message string      `json:"message"`
-	Recipe  domain.User `json:"recipe"`
+	Message string `json:"message"`
+	//This naming is for weird test case
+	Recipe domain.User `json:"recipe"`
 }
 
 type CreateUserResponse struct {

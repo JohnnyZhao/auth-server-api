@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
-	"github.com/johnnyzhao/retail-ai-api/internal/domain"
+	"github.com/johnnyzhao/auth-server-api/internal/domain"
 	"gorm.io/gorm"
 	"log"
 	"net/http"
