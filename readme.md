@@ -2,6 +2,13 @@
 
 This repository contains the code for the User Authentication API, built using Golang and Gin. The API serves as a backend service for basic user authentication.
 
+## Tech used
+    1.Go version 1.18
+    2.Gin web framework v1.9.0
+    3.GORM v1.24.6 - Golang ORM for SQL databases
+    4.MySQL
+    5.Docker, docker-compose
+
 ## Start service for testing
 To start testing the service, make sure you have Docker and docker-compose installed. Then, start the MySQL container and API service by running the following command:
 
@@ -90,9 +97,9 @@ Response
 }
 ```
 
-### DELETE /users/:user_id
+### POST /close
 
-Delete a user with a given user_id.
+Delete current login user
 
 Response
 
