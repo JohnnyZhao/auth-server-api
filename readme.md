@@ -3,11 +3,11 @@
 This repository contains the code for the User Authentication API, built using Golang and Gin. The API serves as a backend service for basic user authentication.
 
 ## Tech used
-    1.Go version 1.18
-    2.Gin web framework v1.9.0
-    3.GORM v1.24.6 - Golang ORM for SQL databases
-    4.MySQL
-    5.Docker, docker-compose
+    Go version 1.18
+    Gin web framework v1.9.0
+    GORM v1.24.6 - Golang ORM for SQL databases
+    MySQL
+    Docker, docker-compose
 
 ## Start service for testing
 To start testing the service, make sure you have Docker and docker-compose installed. Then, start the MySQL container and API service by running the following command:
@@ -16,7 +16,7 @@ To start testing the service, make sure you have Docker and docker-compose insta
 docker-compose up -d
 ```
 
-Once the services are up and running, the API service will be available at http://0.0.0.0:8080. Additionally, the MySQL instance will be accessible at the host `0.0.0.0` with port `3306`, and the `root` user's password will be `example`
+Once the services are up and running, the API service will be available at http://0.0.0.0:8080. Additionally, the MySQL instance will be accessible at the host `0.0.0.0` with port `3306`, database name is `auth_service`, and the `root` user's password will be `example`
 
 Please note that the current docker-compose.yaml configuration is not intended for production deployment.
 ## Key Opponents

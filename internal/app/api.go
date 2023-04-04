@@ -30,14 +30,14 @@ func (a *Api) CreateUser(c *gin.Context) {
 		a.handleBadRequest(c, "Account creation failed", err.Error())
 		return
 	}
-	//hashedPassword := hashPassword(payload.Password)
-	//if err != nil {
-	//	a.handleInternalError(c)
-	//	return
-	//}
+	hashedPassword := hashPassword(payload.Password)
+	if err != nil {
+		a.handleInternalError(c)
+		return
+	}
 	user := domain.User{
 		UserID:         payload.UserID,
-		HashedPassword: payload.Password,
+		HashedPassword: hashedPassword,
 	}
 	if err := a.userRepo.Create(c, &user); err != nil {
 		var mysqlErr *mysql.MySQLError
@@ -58,13 +58,15 @@ func (a *Api) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := strings.Replace(c.GetHeader("Authorization"), "Basic ", "", -1)
 		log.Println("...", header)
-		valueBytes, err := base64.StdEncoding.DecodeString(header)
+
+		headerBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(header))
 		if err != nil {
 			a.handleUnauthorized(c)
 			c.Abort()
 			return
 		}
-		splits := strings.Split(string(valueBytes), ":")
+		decodedHeader := strings.TrimSpace(string(headerBytes))
+		splits := strings.Split(decodedHeader, ":")
 		if len(splits) != 2 {
 			a.handleUnauthorized(c)
 			c.Abort()
@@ -84,7 +86,7 @@ func (a *Api) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		if password != user.HashedPassword {
+		if hashPassword(password) != user.HashedPassword {
 			a.handleForbidden(c)
 			c.Abort()
 			return
@@ -98,6 +100,7 @@ func (a *Api) GetByUserID(c *gin.Context) {
 	userID := c.Param("user_id")
 
 	user, err := a.userRepo.GetByUserID(c, userID)
+
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		a.handleNotFound(c)
