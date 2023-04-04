@@ -13,7 +13,7 @@ This repository contains the code for the User Authentication API, built using G
 To start testing the service, make sure you have Docker and docker-compose installed. Then, start the MySQL container and API service by running the following command:
 
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
 
 Once the services are up and running, the API service will be available at http://0.0.0.0:8080. Additionally, the MySQL instance will be accessible at the host `0.0.0.0` with port `3306`, database name is `auth_service`, and the `root` user's password will be `example`
