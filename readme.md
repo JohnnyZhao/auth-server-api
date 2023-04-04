@@ -44,9 +44,7 @@ Request
 ```json
 {
     "user_id": "john_doe",
-    "password": "password",
-    "nickname": "John",
-    "comment": "A retail enthusiast"
+    "password": "password"
 }
 ```
 
@@ -56,8 +54,7 @@ Response
     "message": "Account successfully created!",
     "user": {
         "user_id": "john_doe",
-        "nickname": "John",
-        "comment": "A retail enthusiast"
+        "nickname": "John"
     }
 }
 ```
